@@ -72,6 +72,7 @@
         .card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 15px; }
         .btn-ios { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; width: 100%; font-weight: 600; font-size: 16px; cursor: pointer; margin-top: 10px; transition: transform 0.1s, opacity 0.2s; }
         .btn-ios:active { transform: scale(0.97); opacity: 0.8; }
+        .btn-ios-success { background: #34c759; }
 
         .radar-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; }
         .radar { width: 160px; height: 160px; border-radius: 50%; border: 2px solid rgba(94, 92, 230, 0.2); position: relative; overflow: hidden; background: rgba(94, 92, 230, 0.05); }
@@ -105,7 +106,6 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <!-- GLTFLoader restored -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
@@ -171,9 +171,9 @@
                 </div>
             </div>
 
-            <!-- MOCKED CAMERA TAB -->
             <div id="livecam" class="tab-content">
                 <h1>Live Feed</h1>
+                <!-- MODIFIED: Replaced live feed with a clean "offline" message -->
                 <div class="card" style="padding: 10px; display: flex; justify-content: center; align-items: center; height: 250px; background: #000; border-radius: 16px;">
                     <span style="color: #ff3b30; font-weight: bold; letter-spacing: 2px;">[ CAMERA OFFLINE ]</span>
                 </div>
@@ -233,7 +233,7 @@
             document.getElementById('clock').innerText = d.getHours() + ":" + d.getMinutes().toString().padStart(2, '0');
         }, 1000);
 
-        // SOUND ENGINE RESTORED
+        // SOUND ENGINE
         const audioContext = {
             knock: new Audio('/static/sounds/knock.mp3'),
             notif: new Audio('/static/sounds/notif.mp3'),
@@ -267,12 +267,12 @@
         scene.add(new THREE.AmbientLight(0xffffff, 0.7));
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(4, 10, 5); dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
         scene.add(dirLight);
 
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0xf0f0f0 }));
         floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
-        // 3D MODEL LOADER RESTORED
         const loader = new THREE.GLTFLoader();
         loader.load('/static/models/door.glb', function (gltf) {
             const doorMesh = gltf.scene;
@@ -284,8 +284,7 @@
             });
             scene.add(doorMesh);
         }, undefined, function () {
-            // Fallback door box if model is missing
-            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 0.2), new THREE.MeshStandardMaterial({ color: 0xe0e0e0 }));
+            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 0.2), new THREE.MeshStandardMaterial({ color: 0xffffff }));
             doorMesh.position.set(0, 2, 0); doorMesh.castShadow = true; scene.add(doorMesh);
         });
 
@@ -323,7 +322,7 @@
         document.getElementById('close-phone-btn').addEventListener('click', closePhoneUI);
 
         // ==========================================
-        // CANVAS CLICK LOGIC (Sound logic restored)
+        // CANVAS CLICK LOGIC
         // ==========================================
         document.getElementById('canvas-container').addEventListener('click', () => {
             if (isPhoneOpen) {
@@ -382,6 +381,7 @@
             updateInboxUI();
 
             try {
+                // This will now receive an empty [] from the mock backend
                 const res = await fetch('/api/scan', { method: 'POST' });
                 const data = await res.json();
                 
@@ -391,7 +391,9 @@
                     audioContext.notif.currentTime = 0; audioContext.notif.play().catch(e=>{});
                     const badge = document.getElementById('notif-badge');
                     badge.innerText = data.length; badge.style.display = 'flex';
-                } else { scanResultsData = []; }
+                } else { 
+                    scanResultsData = []; 
+                }
                 
                 updateInboxUI();
             } catch (e) { console.error("Scan Error", e); }
@@ -405,12 +407,11 @@
             document.getElementById('inbox-feedback').style.display = 'none';
 
             if (scanResultsData.length === 0) {
-                emptyDiv.style.display = 'flex'; viewerDiv.style.display = 'none';
+                emptyDiv.style.display = 'flex'; 
+                viewerDiv.style.display = 'none';
                 document.getElementById('notif-badge').style.display = 'none';
                 return;
             }
-
-            emptyDiv.style.display = 'none'; viewerDiv.style.display = 'block';
         }
 
         function clearAllFaces() {
@@ -420,10 +421,27 @@
         }
 
         async function saveFromInbox() {
+            const nameInput = document.getElementById('inbox-reg-name').value.trim();
             const fb = document.getElementById('inbox-feedback');
-            fb.innerText = "Backend AI is disabled in this mockup.";
-            fb.style.color = "#ff3b30";
-            fb.style.display = "block";
+
+            if (!nameInput) {
+                fb.innerText = "Error: Please enter a name first!";
+                fb.style.color = "#ff3b30";
+                fb.style.display = "block";
+                return; 
+            }
+
+            // This will now receive an error message from the mock backend
+            const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nameInput, index: 0 }) });
+            const data = await res.json();
+            
+            fb.style.display = 'block';
+            if (data.status === "success") { 
+                // This block will not be reached
+            } else { 
+                fb.innerText = "Error: " + data.message; 
+                fb.style.color = "#ff3b30"; 
+            }
         }
 
         function updateFileName(input) {
@@ -437,15 +455,26 @@
             }
         }
 
-        function uploadExternal() {
+        async function uploadExternal() {
+            const file = document.getElementById('file-upload').files[0];
+            const name = document.getElementById('ext-name').value;
             const fb = document.getElementById('ext-feedback');
-            fb.innerText = "Backend AI is disabled in this mockup.";
-            fb.style.color = "#ff3b30";
+            if (!file || !name) { fb.innerText = "Provide both image and name."; fb.style.color="#ff3b30"; return; }
+            fb.innerText = "Processing..."; fb.style.color = "var(--primary)";
+            
+            // This will now receive an error message from the mock backend
+            const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, image: "dummy_data" }) });
+            const data = await res.json();
+            if(data.status === "success") { 
+                // This block will not be reached
+            }
+            else { fb.innerText = data.message; fb.style.color="#ff3b30"; }
         }
 
         async function fetchDatabase() {
             const listDiv = document.getElementById('db-list');
             listDiv.innerHTML = "<p style='padding:20px'>Loading...</p>";
+            // This will now receive an empty [] from the mock backend
             const res = await fetch('/api/database');
             const data = await res.json();
             listDiv.innerHTML = "";
@@ -454,7 +483,6 @@
                 listDiv.innerHTML += `<div class="db-item"><strong style="padding-left:15px">${user.name}</strong><button class="btn-delete" style="margin-right:15px" onclick="deleteUser('${user.name}')">Delete</button></div>`;
             });
         }
-        
         async function deleteUser(name) { await fetch(`/api/database/${name}`, { method: 'DELETE' }); fetchDatabase(); }
 
         window.addEventListener('resize', () => {
