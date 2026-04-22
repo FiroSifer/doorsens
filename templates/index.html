@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroDynamics - Lab Entry</title>
+    <style>
+        :root {
+            --app-bg: #f2f2f7;
+            --card-bg: #ffffff;
+            --primary: #5e5ce6;
+            --text-main: #1c1c1e;
+            --text-sub: #8e8e93;
+        }
+
+        body { margin: 0; overflow: hidden; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; cursor: pointer; }
+        
+        /* --- FLOATING UI ELEMENTS --- */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        
+        #instruction { position: absolute; top: 40px; width: 100%; text-align: center; color: #888; font-size: 1.5rem; letter-spacing: 5px; pointer-events: none; transition: opacity 0.5s; font-weight: 700; text-transform: uppercase; }
+
+        .ui-btn { position: absolute; background: none; border: none; cursor: pointer; display: none; opacity: 0; pointer-events: auto; transition: transform 0.2s; }
+        .ui-btn:hover { transform: scale(1.1); }
+        
+        #back-btn { top: 30px; left: 30px; }
+        #back-btn svg { width: 45px; height: 45px; fill: var(--primary); filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+
+        #phone-wrapper { position: absolute; bottom: 40px; right: 40px; display: none; opacity: 0; pointer-events: auto; }
+        #phone-btn { background: #fff; border: none; cursor: pointer; border-radius: 50%; width: 70px; height: 70px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); transition: all 0.3s; }
+        #phone-btn:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.25); }
+        #phone-btn svg { width: 30px; height: 30px; fill: var(--primary); margin-top: 5px; }
+        
+        #notif-badge {
+            position: absolute; top: -2px; right: -2px; background: #ff3b30; color: white;
+            font-size: 12px; font-weight: bold; width: 24px; height: 24px; border-radius: 50%;
+            display: none; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+
+        /* --- THE IPHONE INTERFACE --- */
+        #security-panel {
+            position: absolute; bottom: -100vh; 
+            left: 50%; transform: translateX(-50%);
+            width: 375px; 
+            /* TALLER PHONE */
+            height: 97vh; max-height: none; min-height: 600px; 
+            background: var(--app-bg); 
+            border: 12px solid #111; border-bottom-width: 12px; border-radius: 45px; 
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), inset 0 0 0 2px #444;
+            z-index: 10; transition: bottom 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex; flex-direction: column; overflow: hidden; pointer-events: auto;
+        }
+
+        .ios-status-bar { height: 40px; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 25px; box-sizing: border-box; font-size: 14px; font-weight: 600; color: var(--text-main); background: transparent; z-index: 20; position: absolute; top: 0; pointer-events: none; }
+        .ios-notch { position: absolute; top: -2px; left: 50%; transform: translateX(-50%); width: 120px; height: 30px; background: #111; border-radius: 0 0 16px 16px; z-index: 21; }
+        .app-container { flex: 1; overflow-y: auto; padding: 60px 20px 100px 20px; }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .ios-tab-bar { position: absolute; bottom: 0; width: 100%; height: 85px; background: rgba(255,255,255,0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border-top: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; padding-top: 10px; z-index: 20; }
+        .tab-btn { background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; color: var(--text-sub); font-size: 10px; font-weight: 500; width: 60px; }
+        .tab-btn svg { width: 24px; height: 24px; fill: var(--text-sub); margin-bottom: 4px; transition: 0.2s; }
+        .tab-btn.active { color: var(--primary); }
+        .tab-btn.active svg { fill: var(--primary); transform: scale(1.1); }
+        .home-indicator { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 130px; height: 5px; background: #1c1c1e; border-radius: 10px; cursor: pointer; z-index: 25; }
+        .home-indicator:hover { background: var(--primary); }
+
+        h1 { font-size: 28px; margin: 0 0 20px 0; color: var(--text-main); font-weight: 700; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 15px; }
+        .btn-ios { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; width: 100%; font-weight: 600; font-size: 16px; cursor: pointer; margin-top: 10px; transition: transform 0.1s, opacity 0.2s; }
+        .btn-ios:active { transform: scale(0.97); opacity: 0.8; }
+        .btn-ios-success { background: #34c759; }
+
+        .radar-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; }
+        .radar { width: 160px; height: 160px; border-radius: 50%; border: 2px solid rgba(94, 92, 230, 0.2); position: relative; overflow: hidden; background: rgba(94, 92, 230, 0.05); }
+        .radar::before { content: ''; position: absolute; width: 50%; height: 50%; background: linear-gradient(45deg, rgba(94, 92, 230, 0) 0%, rgba(94, 92, 230, 0.8) 100%); top: 0; right: 0; transform-origin: bottom left; animation: scan 2s linear infinite; }
+        @keyframes scan { 100% { transform: rotate(360deg); } }
+
+        .face-viewer { text-align: center; }
+        #inbox-img { width: 160px; height: 160px; object-fit: cover; border-radius: 50%; border: 4px solid var(--primary); margin: 0 auto 15px auto; display: block; box-shadow: 0 8px 16px rgba(94, 92, 230, 0.2); }
+        .nav-controls { display: flex; justify-content: space-between; margin-top: 15px; align-items: center; background: #f2f2f7; border-radius: 20px; padding: 5px; }
+        .nav-arrow { background: none; border: none; padding: 10px 20px; border-radius: 15px; cursor: pointer; font-weight: 600; color: var(--primary); }
+        .nav-arrow:hover { background: #e5e5ea; }
+        
+        .input-text { width: 100%; padding: 14px; border: 1px solid #e5e5ea; border-radius: 12px; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; background: #f2f2f7;}
+        #live-feed { width: 100%; border-radius: 16px; border: none; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .db-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5ea; padding: 12px 0; }
+        .db-item:last-child { border-bottom: none; }
+        .btn-delete { background: #ff3b30; color: white; border: none; padding: 6px 12px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 12px; }
+
+        /* --- COOLER UPLOAD ZONE --- */
+        .file-upload-label {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 30px 20px; border: 2px dashed #c7c7cc; border-radius: 12px;
+            background: #f2f2f7; cursor: pointer; transition: all 0.2s; margin-bottom: 15px;
+        }
+        .file-upload-label:hover { border-color: var(--primary); background: #e5e5ea; }
+        .file-upload-label svg { width: 45px; height: 45px; fill: var(--primary); margin-bottom: 10px; transition: 0.2s; }
+        .file-upload-label:hover svg { transform: translateY(-5px); }
+        #file-name-display { color: var(--text-sub); font-size: 14px; font-weight: 600; text-align: center; word-break: break-all; }
+
+        ::-webkit-scrollbar { width: 0px; } 
+    </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div id="instruction">DoorSense AI</div>
+        
+        <button id="back-btn" class="ui-btn sound-hover">
+            <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+        </button>
+
+        <div id="phone-wrapper" class="ui-btn">
+            <button id="phone-btn" class="sound-hover">
+                <svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+            </button>
+            <div id="notif-badge">1</div>
+        </div>
+    </div>
+
+    <div id="security-panel">
+        <div class="ios-notch"></div>
+        <div class="ios-status-bar">
+            <span id="clock">9:41</span>
+            <span>LTE &nbsp; <svg width="18" height="12" viewBox="0 0 24 16" fill="var(--text-main)"><path d="M22 16V0L0 16H22z"/></svg></span>
+        </div>
+
+        <div class="app-container">
+            <div id="inbox" class="tab-content active">
+                <h1>Scanner</h1>
+                
+                <div id="inbox-empty" class="radar-container">
+                    <div class="radar"></div>
+                    <p style="color: var(--text-sub); font-weight: 600; margin-top: 20px;">Awaiting Visual Input...</p>
+                </div>
+                
+                <div id="inbox-viewer" class="face-viewer card" style="display:none;">
+                    <img id="inbox-img" src="" alt="Face">
+                    <h2 id="inbox-name" style="margin:5px 0;">--</h2>
+                    <p id="inbox-status" style="margin:0 0 15px 0; font-weight:bold;">--</p>
+                    
+                    <!-- ACTIONS FOR VERIFIED FACES -->
+                    <div id="verified-actions" style="display:none; text-align: center;">
+                        <button class="btn-ios sound-hover" style="background: #34c759;" onclick="clearAllFaces()">Confirm All</button>
+                    </div>
+
+                    <!-- ACTIONS FOR UNKNOWN FACES -->
+                    <div id="unknown-save-block" style="margin-top: 15px; text-align: left;">
+                        <input type="text" id="inbox-reg-name" class="input-text" placeholder="Assign Name...">
+                        
+                        <!-- SIMPLIFIED BUTTONS -->
+                        <div style="display: flex; gap: 10px; margin-top: 5px;">
+                            <button class="btn-ios sound-hover" style="flex: 1; background: #34c759;" onclick="saveFromInbox()">Save</button>
+                            <button class="btn-ios sound-hover" style="flex: 1; background: #8e8e93;" onclick="clearAllFaces()">Confirm All</button>
+                        </div>
+                        
+                        <!-- In-App red feedback message -->
+                        <p id="inbox-feedback" style="font-size:0.9rem; display:none; text-align: center; margin-top: 15px; font-weight: bold;"></p>
+                    </div>
+
+                    <div class="nav-controls">
+                        <button class="nav-arrow sound-hover" onclick="changeFace(-1)">◄</button>
+                        <span id="inbox-counter" style="font-weight: bold; color: var(--text-sub);">1 of 1</span>
+                        <button class="nav-arrow sound-hover" onclick="changeFace(1)">►</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="livecam" class="tab-content">
+                <h1>Live Feed</h1>
+                <div class="card" style="padding: 10px;">
+                    <img id="live-feed" src="/video_feed" alt="Camera Feed" />
+                </div>
+                <button class="btn-ios sound-hover" onclick="manualScan()">Capture Snapshot</button>
+            </div>
+
+            <div id="database" class="tab-content">
+                <h1>Database</h1>
+                <button class="btn-ios sound-hover" onclick="fetchDatabase()" style="margin-bottom: 20px; background: #e5e5ea; color: var(--text-main);">↻ Sync Data</button>
+                <div class="card" id="db-list"></div>
+            </div>
+
+            <div id="import" class="tab-content">
+                <h1>Upload</h1>
+                <div class="card">
+                    <p style="color: var(--text-sub); margin-top: 0; margin-bottom: 15px;">Register a profile remotely.</p>
+                    
+                    <input type="file" id="file-upload" accept="image/*" style="display: none;" onchange="updateFileName(this)">
+                    <label for="file-upload" class="file-upload-label sound-hover">
+                        <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.36 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                        <span id="file-name-display">Tap to select photo...</span>
+                    </label>
+
+                    <input type="text" id="ext-name" class="input-text" placeholder="Full Name">
+                    <button class="btn-ios sound-hover" onclick="uploadExternal()">Register Profile</button>
+                    <p id="ext-feedback" style="text-align:center; margin-top:10px; font-weight:bold;"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="ios-tab-bar">
+            <button class="tab-btn active sound-hover" onclick="openTab('inbox', this)">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6l6 6 6-6h-2v-5h-2v5z"/></svg>
+                Scanner
+            </button>
+            <button class="tab-btn sound-hover" onclick="openTab('livecam', this)">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
+                Camera
+            </button>
+            <button class="tab-btn sound-hover" onclick="openTab('database', this)">
+                <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                Database
+            </button>
+            <button class="tab-btn sound-hover" onclick="openTab('import', this)">
+                <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.36 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                Upload
+            </button>
+        </div>
+        
+        <div class="home-indicator" id="close-phone-btn" title="Swipe to Close"></div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        setInterval(() => {
+            const d = new Date();
+            document.getElementById('clock').innerText = d.getHours() + ":" + d.getMinutes().toString().padStart(2, '0');
+        }, 1000);
+
+        // SOUND ENGINE
+        const audioContext = {
+            knock: new Audio('/static/sounds/knock.mp3'),
+            notif: new Audio('/static/sounds/notif.mp3'),
+            whoosh: new Audio('/static/sounds/whoosh.mp3'),
+            hover: new Audio('/static/sounds/hover.mp3'),
+            click: new Audio('/static/sounds/click.mp3')
+        };
+        audioContext.hover.volume = 0.2; audioContext.click.volume = 0.4;
+        document.querySelectorAll('.sound-hover').forEach(el => {
+            el.addEventListener('mouseenter', () => { audioContext.hover.currentTime=0; audioContext.hover.play().catch(e=>{}); });
+            el.addEventListener('click', () => { audioContext.click.currentTime=0; audioContext.click.play().catch(e=>{}); });
+        });
+
+        let isAtDoor = false;
+        let isPhoneOpen = false;
+        let scanResultsData = [];
+        let currentFaceIndex = 0;
+
+        // THREE.JS 3D ENVIRONMENT
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 1.5, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(4, 10, 5); dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0xf0f0f0 }));
+        floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+        const loader = new THREE.GLTFLoader();
+        loader.load('/static/models/door.glb', function (gltf) {
+            const doorMesh = gltf.scene;
+            doorMesh.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true; child.receiveShadow = true;
+                    child.material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+                }
+            });
+            scene.add(doorMesh);
+        }, undefined, function () {
+            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 0.2), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+            doorMesh.position.set(0, 2, 0); doorMesh.castShadow = true; scene.add(doorMesh);
+        });
+
+        // ==========================================
+        // PHONE UI OPEN/CLOSE LOGIC
+        // ==========================================
+        function openPhoneUI() {
+            isPhoneOpen = true;
+            document.getElementById('notif-badge').style.display = 'none';
+            document.getElementById('security-panel').style.bottom = "-15px"; 
+            
+            gsap.to('#back-btn', { opacity: 0, duration: 0.2, onComplete: () => {
+                document.getElementById('back-btn').style.display = 'none';
+            }});
+
+            const inboxBtn = document.querySelector(".ios-tab-bar .tab-btn:first-child");
+            openTab('inbox', inboxBtn);
+        }
+
+        function closePhoneUI() {
+            isPhoneOpen = false;
+            document.getElementById('security-panel').style.bottom = "-100vh";
+            
+            if (isAtDoor) {
+                document.getElementById('back-btn').style.display = 'block';
+                gsap.to('#back-btn', { opacity: 1, duration: 0.3 });
+            }
+        }
+
+        document.getElementById('phone-btn').addEventListener('click', () => {
+            if (isPhoneOpen) { closePhoneUI(); } 
+            else { openPhoneUI(); }
+        });
+
+        document.getElementById('close-phone-btn').addEventListener('click', closePhoneUI);
+
+        // ==========================================
+        // CANVAS CLICK LOGIC
+        // ==========================================
+        document.getElementById('canvas-container').addEventListener('click', () => {
+            if (isPhoneOpen) {
+                closePhoneUI();
+                return;
+            }
+
+            if (!isAtDoor) {
+                isAtDoor = true;
+                audioContext.whoosh.currentTime = 0; audioContext.whoosh.play().catch(e=>{});
+                document.getElementById('instruction').style.opacity = 0;
+
+                gsap.to(camera.position, {
+                    z: 4.8, y: 2.0, duration: 1.5, ease: "power3.inOut",
+                    onComplete: () => {
+                        document.getElementById('back-btn').style.display = 'block';
+                        document.getElementById('phone-wrapper').style.display = 'block';
+                        gsap.to(['#back-btn', '#phone-wrapper'], { opacity: 1, duration: 0.5 });
+                    }
+                });
+            } else {
+                audioContext.knock.currentTime = 0; audioContext.knock.play().catch(e=>{});
+                scanResultsData = [];
+                updateInboxUI();
+                setTimeout(() => { manualScan(); }, 1500);
+            }
+        });
+
+        document.getElementById('back-btn').addEventListener('click', () => {
+            isAtDoor = false;
+            audioContext.whoosh.currentTime = 0; audioContext.whoosh.play().catch(e=>{});
+            gsap.to(['#back-btn', '#phone-wrapper'], { opacity: 0, duration: 0.3, onComplete: () => {
+                document.getElementById('back-btn').style.display = 'none';
+                document.getElementById('phone-wrapper').style.display = 'none';
+            }});
+            gsap.to(camera.position, { z: 12, y: 1.5, duration: 1.5, ease: "power3.inOut" });
+            document.getElementById('instruction').style.opacity = 1;
+        });
+
+        // ==========================================
+        // APP TABS AND DATA LOGIC
+        // ==========================================
+        function openTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.ios-tab-bar .tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if(btnElement) btnElement.classList.add('active');
+            if (tabId === 'database') fetchDatabase();
+        }
+
+        async function manualScan() {
+            // ---> NEW: Instantly jump to Scanner tab so user sees the animation <---
+            const inboxBtn = document.querySelector(".ios-tab-bar .tab-btn:first-child");
+            openTab('inbox', inboxBtn);
+            
+            // Empty the data to show "Awaiting Visual Input" (Radar)
+            scanResultsData = [];
+            updateInboxUI();
+
+            try {
+                const res = await fetch('/api/scan', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data && data.length > 0) {
+                    scanResultsData = data;
+                    currentFaceIndex = 0;
+                    audioContext.notif.currentTime = 0; audioContext.notif.play().catch(e=>{});
+                    const badge = document.getElementById('notif-badge');
+                    badge.innerText = data.length; badge.style.display = 'flex';
+                } else { scanResultsData = []; }
+                
+                updateInboxUI();
+            } catch (e) { console.error("Scan Error", e); }
+        }
+
+        function updateInboxUI() {
+            const emptyDiv = document.getElementById('inbox-empty');
+            const viewerDiv = document.getElementById('inbox-viewer');
+            const verifiedActions = document.getElementById('verified-actions');
+            const unknownBlock = document.getElementById('unknown-save-block');
+            
+            // Clear input and feedback whenever UI updates
+            document.getElementById('inbox-reg-name').value = '';
+            document.getElementById('inbox-feedback').style.display = 'none';
+
+            if (scanResultsData.length === 0) {
+                emptyDiv.style.display = 'flex'; viewerDiv.style.display = 'none';
+                document.getElementById('notif-badge').style.display = 'none';
+                return;
+            }
+
+            emptyDiv.style.display = 'none'; viewerDiv.style.display = 'block';
+            
+            const person = scanResultsData[currentFaceIndex];
+            document.getElementById('inbox-img').src = "data:image/jpeg;base64," + person.image;
+            document.getElementById('inbox-name').innerText = person.name;
+            document.getElementById('inbox-counter').innerText = `${currentFaceIndex + 1} of ${scanResultsData.length}`;
+            
+            // Update badge dynamic count
+            const badge = document.getElementById('notif-badge');
+            badge.innerText = scanResultsData.length;
+            if (scanResultsData.length > 0 && !isPhoneOpen) badge.style.display = 'flex';
+
+            const statusEl = document.getElementById('inbox-status');
+            
+            if (person.verified) {
+                statusEl.innerText = "VERIFIED IDENTITY"; statusEl.style.color = "#34c759";
+                unknownBlock.style.display = "none";
+                verifiedActions.style.display = "block";
+            } else {
+                statusEl.innerText = "UNKNOWN VISITOR"; statusEl.style.color = "#ff3b30";
+                unknownBlock.style.display = "block";
+                verifiedActions.style.display = "none";
+            }
+        }
+
+        // EMPTIES THE ENTIRE QUEUE AT ONCE
+        function clearAllFaces() {
+            audioContext.click.currentTime = 0; audioContext.click.play().catch(e=>{});
+            scanResultsData = []; 
+            updateInboxUI();      
+        }
+
+        function changeFace(dir) {
+            currentFaceIndex += dir;
+            if (currentFaceIndex < 0) currentFaceIndex = scanResultsData.length - 1;
+            if (currentFaceIndex >= scanResultsData.length) currentFaceIndex = 0;
+            updateInboxUI();
+        }
+
+        async function saveFromInbox() {
+            const nameInput = document.getElementById('inbox-reg-name').value.trim();
+            const fb = document.getElementById('inbox-feedback');
+
+            if (!nameInput) {
+                fb.innerText = "Error: Please enter a name first!";
+                fb.style.color = "#ff3b30";
+                fb.style.display = "block";
+                return; 
+            }
+
+            const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nameInput, index: currentFaceIndex }) });
+            const data = await res.json();
+            
+            fb.style.display = 'block';
+            if (data.status === "success") { 
+                fb.innerText = "Identity Registered!";
+                fb.style.color = "#34c759";
+                scanResultsData[currentFaceIndex].verified = true; 
+                scanResultsData[currentFaceIndex].name = nameInput;
+                setTimeout(updateInboxUI, 1000); 
+            } else { 
+                fb.innerText = "Error: " + data.message; 
+                fb.style.color = "#ff3b30"; 
+            }
+        }
+
+        function updateFileName(input) {
+            const display = document.getElementById('file-name-display');
+            if (input.files && input.files[0]) {
+                display.innerText = input.files[0].name;
+                display.style.color = "var(--primary)";
+            } else {
+                display.innerText = "Tap to select photo...";
+                display.style.color = "var(--text-sub)";
+            }
+        }
+
+        function uploadExternal() {
+            const file = document.getElementById('file-upload').files[0];
+            const name = document.getElementById('ext-name').value;
+            const fb = document.getElementById('ext-feedback');
+            if (!file || !name) { fb.innerText = "Provide both image and name."; fb.style.color="#ff3b30"; return; }
+            fb.innerText = "Processing..."; fb.style.color = "var(--primary)";
+            
+            const reader = new FileReader();
+            reader.onloadend = async function() {
+                const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, image: reader.result }) });
+                const data = await res.json();
+                if(data.status === "success") { 
+                    fb.innerText = "Profile Saved!"; 
+                    fb.style.color="#34c759"; 
+                    document.getElementById('ext-name').value=''; 
+                    document.getElementById('file-name-display').innerText = "Tap to select photo...";
+                    document.getElementById('file-name-display').style.color = "var(--text-sub)";
+                }
+                else { fb.innerText = data.message; fb.style.color="#ff3b30"; }
+            }
+            reader.readAsDataURL(file);
+        }
+
+        async function fetchDatabase() {
+            const listDiv = document.getElementById('db-list');
+            listDiv.innerHTML = "<p style='padding:20px'>Loading...</p>";
+            const res = await fetch('/api/database');
+            const data = await res.json();
+            listDiv.innerHTML = "";
+            if(data.length===0) listDiv.innerHTML = "<p style='padding:20px; color:#888;'>Database is empty.</p>";
+            data.forEach(user => {
+                listDiv.innerHTML += `<div class="db-item"><strong style="padding-left:15px">${user.name}</strong><button class="btn-delete" style="margin-right:15px" onclick="deleteUser('${user.name}')">Delete</button></div>`;
+            });
+        }
+        async function deleteUser(name) { await fetch(`/api/database/${name}`, { method: 'DELETE' }); fetchDatabase(); }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(!isAtDoor) camera.position.x = Math.sin(Date.now() * 0.0005) * 0.1;
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
