@@ -45,7 +45,6 @@
             position: absolute; bottom: -100vh; 
             left: 50%; transform: translateX(-50%);
             width: 375px; 
-            /* TALLER PHONE */
             height: 97vh; max-height: none; min-height: 600px; 
             background: var(--app-bg); 
             border: 12px solid #111; border-bottom-width: 12px; border-radius: 45px; 
@@ -73,7 +72,6 @@
         .card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 15px; }
         .btn-ios { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 12px; width: 100%; font-weight: 600; font-size: 16px; cursor: pointer; margin-top: 10px; transition: transform 0.1s, opacity 0.2s; }
         .btn-ios:active { transform: scale(0.97); opacity: 0.8; }
-        .btn-ios-success { background: #34c759; }
 
         .radar-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; }
         .radar { width: 160px; height: 160px; border-radius: 50%; border: 2px solid rgba(94, 92, 230, 0.2); position: relative; overflow: hidden; background: rgba(94, 92, 230, 0.05); }
@@ -87,7 +85,6 @@
         .nav-arrow:hover { background: #e5e5ea; }
         
         .input-text { width: 100%; padding: 14px; border: 1px solid #e5e5ea; border-radius: 12px; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; background: #f2f2f7;}
-        #live-feed { width: 100%; border-radius: 16px; border: none; background: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .db-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e5ea; padding: 12px 0; }
         .db-item:last-child { border-bottom: none; }
         .btn-delete { background: #ff3b30; color: white; border: none; padding: 6px 12px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 12px; }
@@ -108,7 +105,6 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
 
@@ -150,22 +146,18 @@
                     <h2 id="inbox-name" style="margin:5px 0;">--</h2>
                     <p id="inbox-status" style="margin:0 0 15px 0; font-weight:bold;">--</p>
                     
-                    <!-- ACTIONS FOR VERIFIED FACES -->
                     <div id="verified-actions" style="display:none; text-align: center;">
                         <button class="btn-ios sound-hover" style="background: #34c759;" onclick="clearAllFaces()">Confirm All</button>
                     </div>
 
-                    <!-- ACTIONS FOR UNKNOWN FACES -->
                     <div id="unknown-save-block" style="margin-top: 15px; text-align: left;">
                         <input type="text" id="inbox-reg-name" class="input-text" placeholder="Assign Name...">
                         
-                        <!-- SIMPLIFIED BUTTONS -->
                         <div style="display: flex; gap: 10px; margin-top: 5px;">
                             <button class="btn-ios sound-hover" style="flex: 1; background: #34c759;" onclick="saveFromInbox()">Save</button>
                             <button class="btn-ios sound-hover" style="flex: 1; background: #8e8e93;" onclick="clearAllFaces()">Confirm All</button>
                         </div>
                         
-                        <!-- In-App red feedback message -->
                         <p id="inbox-feedback" style="font-size:0.9rem; display:none; text-align: center; margin-top: 15px; font-weight: bold;"></p>
                     </div>
 
@@ -177,12 +169,13 @@
                 </div>
             </div>
 
+            <!-- MOCKED CAMERA TAB -->
             <div id="livecam" class="tab-content">
                 <h1>Live Feed</h1>
-                <div class="card" style="padding: 10px;">
-                    <img id="live-feed" src="/video_feed" alt="Camera Feed" />
+                <div class="card" style="padding: 10px; display: flex; justify-content: center; align-items: center; height: 250px; background: #000; border-radius: 16px;">
+                    <span style="color: #ff3b30; font-weight: bold; letter-spacing: 2px;">[ CAMERA OFFLINE ]</span>
                 </div>
-                <button class="btn-ios sound-hover" onclick="manualScan()">Capture Snapshot</button>
+                <button class="btn-ios sound-hover" onclick="manualScan()">Simulate Scan</button>
             </div>
 
             <div id="database" class="tab-content">
@@ -238,20 +231,6 @@
             document.getElementById('clock').innerText = d.getHours() + ":" + d.getMinutes().toString().padStart(2, '0');
         }, 1000);
 
-        // SOUND ENGINE
-        const audioContext = {
-            knock: new Audio('/static/sounds/knock.mp3'),
-            notif: new Audio('/static/sounds/notif.mp3'),
-            whoosh: new Audio('/static/sounds/whoosh.mp3'),
-            hover: new Audio('/static/sounds/hover.mp3'),
-            click: new Audio('/static/sounds/click.mp3')
-        };
-        audioContext.hover.volume = 0.2; audioContext.click.volume = 0.4;
-        document.querySelectorAll('.sound-hover').forEach(el => {
-            el.addEventListener('mouseenter', () => { audioContext.hover.currentTime=0; audioContext.hover.play().catch(e=>{}); });
-            el.addEventListener('click', () => { audioContext.click.currentTime=0; audioContext.click.play().catch(e=>{}); });
-        });
-
         let isAtDoor = false;
         let isPhoneOpen = false;
         let scanResultsData = [];
@@ -272,26 +251,14 @@
         scene.add(new THREE.AmbientLight(0xffffff, 0.7));
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(4, 10, 5); dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
         scene.add(dirLight);
 
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0xf0f0f0 }));
         floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
-        const loader = new THREE.GLTFLoader();
-        loader.load('/static/models/door.glb', function (gltf) {
-            const doorMesh = gltf.scene;
-            doorMesh.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true; child.receiveShadow = true;
-                    child.material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
-                }
-            });
-            scene.add(doorMesh);
-        }, undefined, function () {
-            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 0.2), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-            doorMesh.position.set(0, 2, 0); doorMesh.castShadow = true; scene.add(doorMesh);
-        });
+        // Fallback door box if no model exists
+        const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 0.2), new THREE.MeshStandardMaterial({ color: 0xe0e0e0 }));
+        doorMesh.position.set(0, 2, 0); doorMesh.castShadow = true; scene.add(doorMesh);
 
         // ==========================================
         // PHONE UI OPEN/CLOSE LOGIC
@@ -337,7 +304,6 @@
 
             if (!isAtDoor) {
                 isAtDoor = true;
-                audioContext.whoosh.currentTime = 0; audioContext.whoosh.play().catch(e=>{});
                 document.getElementById('instruction').style.opacity = 0;
 
                 gsap.to(camera.position, {
@@ -349,7 +315,6 @@
                     }
                 });
             } else {
-                audioContext.knock.currentTime = 0; audioContext.knock.play().catch(e=>{});
                 scanResultsData = [];
                 updateInboxUI();
                 setTimeout(() => { manualScan(); }, 1500);
@@ -358,7 +323,6 @@
 
         document.getElementById('back-btn').addEventListener('click', () => {
             isAtDoor = false;
-            audioContext.whoosh.currentTime = 0; audioContext.whoosh.play().catch(e=>{});
             gsap.to(['#back-btn', '#phone-wrapper'], { opacity: 0, duration: 0.3, onComplete: () => {
                 document.getElementById('back-btn').style.display = 'none';
                 document.getElementById('phone-wrapper').style.display = 'none';
@@ -379,11 +343,9 @@
         }
 
         async function manualScan() {
-            // ---> NEW: Instantly jump to Scanner tab so user sees the animation <---
             const inboxBtn = document.querySelector(".ios-tab-bar .tab-btn:first-child");
             openTab('inbox', inboxBtn);
             
-            // Empty the data to show "Awaiting Visual Input" (Radar)
             scanResultsData = [];
             updateInboxUI();
 
@@ -394,7 +356,6 @@
                 if (data && data.length > 0) {
                     scanResultsData = data;
                     currentFaceIndex = 0;
-                    audioContext.notif.currentTime = 0; audioContext.notif.play().catch(e=>{});
                     const badge = document.getElementById('notif-badge');
                     badge.innerText = data.length; badge.style.display = 'flex';
                 } else { scanResultsData = []; }
@@ -406,10 +367,7 @@
         function updateInboxUI() {
             const emptyDiv = document.getElementById('inbox-empty');
             const viewerDiv = document.getElementById('inbox-viewer');
-            const verifiedActions = document.getElementById('verified-actions');
-            const unknownBlock = document.getElementById('unknown-save-block');
             
-            // Clear input and feedback whenever UI updates
             document.getElementById('inbox-reg-name').value = '';
             document.getElementById('inbox-feedback').style.display = 'none';
 
@@ -420,69 +378,18 @@
             }
 
             emptyDiv.style.display = 'none'; viewerDiv.style.display = 'block';
-            
-            const person = scanResultsData[currentFaceIndex];
-            document.getElementById('inbox-img').src = "data:image/jpeg;base64," + person.image;
-            document.getElementById('inbox-name').innerText = person.name;
-            document.getElementById('inbox-counter').innerText = `${currentFaceIndex + 1} of ${scanResultsData.length}`;
-            
-            // Update badge dynamic count
-            const badge = document.getElementById('notif-badge');
-            badge.innerText = scanResultsData.length;
-            if (scanResultsData.length > 0 && !isPhoneOpen) badge.style.display = 'flex';
-
-            const statusEl = document.getElementById('inbox-status');
-            
-            if (person.verified) {
-                statusEl.innerText = "VERIFIED IDENTITY"; statusEl.style.color = "#34c759";
-                unknownBlock.style.display = "none";
-                verifiedActions.style.display = "block";
-            } else {
-                statusEl.innerText = "UNKNOWN VISITOR"; statusEl.style.color = "#ff3b30";
-                unknownBlock.style.display = "block";
-                verifiedActions.style.display = "none";
-            }
         }
 
-        // EMPTIES THE ENTIRE QUEUE AT ONCE
         function clearAllFaces() {
-            audioContext.click.currentTime = 0; audioContext.click.play().catch(e=>{});
             scanResultsData = []; 
             updateInboxUI();      
         }
 
-        function changeFace(dir) {
-            currentFaceIndex += dir;
-            if (currentFaceIndex < 0) currentFaceIndex = scanResultsData.length - 1;
-            if (currentFaceIndex >= scanResultsData.length) currentFaceIndex = 0;
-            updateInboxUI();
-        }
-
         async function saveFromInbox() {
-            const nameInput = document.getElementById('inbox-reg-name').value.trim();
             const fb = document.getElementById('inbox-feedback');
-
-            if (!nameInput) {
-                fb.innerText = "Error: Please enter a name first!";
-                fb.style.color = "#ff3b30";
-                fb.style.display = "block";
-                return; 
-            }
-
-            const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nameInput, index: currentFaceIndex }) });
-            const data = await res.json();
-            
-            fb.style.display = 'block';
-            if (data.status === "success") { 
-                fb.innerText = "Identity Registered!";
-                fb.style.color = "#34c759";
-                scanResultsData[currentFaceIndex].verified = true; 
-                scanResultsData[currentFaceIndex].name = nameInput;
-                setTimeout(updateInboxUI, 1000); 
-            } else { 
-                fb.innerText = "Error: " + data.message; 
-                fb.style.color = "#ff3b30"; 
-            }
+            fb.innerText = "Backend AI is disabled in this mockup.";
+            fb.style.color = "#ff3b30";
+            fb.style.display = "block";
         }
 
         function updateFileName(input) {
@@ -497,26 +404,9 @@
         }
 
         function uploadExternal() {
-            const file = document.getElementById('file-upload').files[0];
-            const name = document.getElementById('ext-name').value;
             const fb = document.getElementById('ext-feedback');
-            if (!file || !name) { fb.innerText = "Provide both image and name."; fb.style.color="#ff3b30"; return; }
-            fb.innerText = "Processing..."; fb.style.color = "var(--primary)";
-            
-            const reader = new FileReader();
-            reader.onloadend = async function() {
-                const res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, image: reader.result }) });
-                const data = await res.json();
-                if(data.status === "success") { 
-                    fb.innerText = "Profile Saved!"; 
-                    fb.style.color="#34c759"; 
-                    document.getElementById('ext-name').value=''; 
-                    document.getElementById('file-name-display').innerText = "Tap to select photo...";
-                    document.getElementById('file-name-display').style.color = "var(--text-sub)";
-                }
-                else { fb.innerText = data.message; fb.style.color="#ff3b30"; }
-            }
-            reader.readAsDataURL(file);
+            fb.innerText = "Backend AI is disabled in this mockup.";
+            fb.style.color = "#ff3b30";
         }
 
         async function fetchDatabase() {
@@ -530,6 +420,7 @@
                 listDiv.innerHTML += `<div class="db-item"><strong style="padding-left:15px">${user.name}</strong><button class="btn-delete" style="margin-right:15px" onclick="deleteUser('${user.name}')">Delete</button></div>`;
             });
         }
+        
         async function deleteUser(name) { await fetch(`/api/database/${name}`, { method: 'DELETE' }); fetchDatabase(); }
 
         window.addEventListener('resize', () => {
