@@ -105,6 +105,8 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- GLTFLoader restored -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
 
@@ -231,6 +233,20 @@
             document.getElementById('clock').innerText = d.getHours() + ":" + d.getMinutes().toString().padStart(2, '0');
         }, 1000);
 
+        // SOUND ENGINE RESTORED
+        const audioContext = {
+            knock: new Audio('/static/sounds/knock.mp3'),
+            notif: new Audio('/static/sounds/notif.mp3'),
+            whoosh: new Audio('/static/sounds/whoosh.mp3'),
+            hover: new Audio('/static/sounds/hover.mp3'),
+            click: new Audio('/static/sounds/click.mp3')
+        };
+        audioContext.hover.volume = 0.2; audioContext.click.volume = 0.4;
+        document.querySelectorAll('.sound-hover').forEach(el => {
+            el.addEventListener('mouseenter', () => { audioContext.hover.currentTime=0; audioContext.hover.play().catch(e=>{}); });
+            el.addEventListener('click', () => { audioContext.click.currentTime=0; audioContext.click.play().catch(e=>{}); });
+        });
+
         let isAtDoor = false;
         let isPhoneOpen = false;
         let scanResultsData = [];
@@ -256,9 +272,22 @@
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0xf0f0f0 }));
         floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
-        // Fallback door box if no model exists
-        const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 0.2), new THREE.MeshStandardMaterial({ color: 0xe0e0e0 }));
-        doorMesh.position.set(0, 2, 0); doorMesh.castShadow = true; scene.add(doorMesh);
+        // 3D MODEL LOADER RESTORED
+        const loader = new THREE.GLTFLoader();
+        loader.load('/static/models/door.glb', function (gltf) {
+            const doorMesh = gltf.scene;
+            doorMesh.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true; child.receiveShadow = true;
+                    child.material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+                }
+            });
+            scene.add(doorMesh);
+        }, undefined, function () {
+            // Fallback door box if model is missing
+            const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 4, 0.2), new THREE.MeshStandardMaterial({ color: 0xe0e0e0 }));
+            doorMesh.position.set(0, 2, 0); doorMesh.castShadow = true; scene.add(doorMesh);
+        });
 
         // ==========================================
         // PHONE UI OPEN/CLOSE LOGIC
@@ -294,7 +323,7 @@
         document.getElementById('close-phone-btn').addEventListener('click', closePhoneUI);
 
         // ==========================================
-        // CANVAS CLICK LOGIC
+        // CANVAS CLICK LOGIC (Sound logic restored)
         // ==========================================
         document.getElementById('canvas-container').addEventListener('click', () => {
             if (isPhoneOpen) {
@@ -304,6 +333,7 @@
 
             if (!isAtDoor) {
                 isAtDoor = true;
+                audioContext.whoosh.currentTime = 0; audioContext.whoosh.play().catch(e=>{});
                 document.getElementById('instruction').style.opacity = 0;
 
                 gsap.to(camera.position, {
@@ -315,6 +345,7 @@
                     }
                 });
             } else {
+                audioContext.knock.currentTime = 0; audioContext.knock.play().catch(e=>{});
                 scanResultsData = [];
                 updateInboxUI();
                 setTimeout(() => { manualScan(); }, 1500);
@@ -323,6 +354,7 @@
 
         document.getElementById('back-btn').addEventListener('click', () => {
             isAtDoor = false;
+            audioContext.whoosh.currentTime = 0; audioContext.whoosh.play().catch(e=>{});
             gsap.to(['#back-btn', '#phone-wrapper'], { opacity: 0, duration: 0.3, onComplete: () => {
                 document.getElementById('back-btn').style.display = 'none';
                 document.getElementById('phone-wrapper').style.display = 'none';
@@ -356,6 +388,7 @@
                 if (data && data.length > 0) {
                     scanResultsData = data;
                     currentFaceIndex = 0;
+                    audioContext.notif.currentTime = 0; audioContext.notif.play().catch(e=>{});
                     const badge = document.getElementById('notif-badge');
                     badge.innerText = data.length; badge.style.display = 'flex';
                 } else { scanResultsData = []; }
@@ -381,6 +414,7 @@
         }
 
         function clearAllFaces() {
+            audioContext.click.currentTime = 0; audioContext.click.play().catch(e=>{});
             scanResultsData = []; 
             updateInboxUI();      
         }

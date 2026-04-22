@@ -9,7 +9,7 @@ def index():
 
 @app.route('/api/scan', methods=['POST'])
 def scan():
-    # Camera and AI removed. Returns an empty array.
+    # AI/Camera removed. Returns an empty array.
     # The UI will gracefully show the "Awaiting Visual Input" radar screen.
     return jsonify([])
 
